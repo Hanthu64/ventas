@@ -1,14 +1,19 @@
 package org.iesvdm.ventas_sb;
 
 import lombok.extern.slf4j.Slf4j;
+import org.iesvdm.ventas_sb.dao.ClienteDAO;
+import org.iesvdm.ventas_sb.dao.ClienteDAOJDBCClientImpl;
 import org.iesvdm.ventas_sb.modelo.Cliente;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -28,6 +33,9 @@ public class JDBCClientTests {
 
     @Autowired
     JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    JdbcClient jdbcClient;
 
     Cliente cli1 = Cliente.builder()
             .nombre("Jose M.")
@@ -83,27 +91,70 @@ public class JDBCClientTests {
 
     @Test
     void getAll() {
+        String query = """
+        SELECT * FROM cliente;
+        """;
 
+        RowMapper<Cliente> rowMapperCliente = (rs, rowNum) -> new Cliente(rs.getInt("id"),
+                rs.getString("nombre"),
+                rs.getString("apellido1"),
+                rs.getString("apellido2"),
+                rs.getString("ciudad"),
+                rs.getInt("categoría")
+        );
+
+        List<Cliente> listaCli = jdbcClient.sql(query)
+                                .query(rowMapperCliente)
+                                .list();
+
+        assertTrue(listaCli.size() > 0);
     }
 
     @Test
     void findById() {
         int idToFind = 1;
-        //TODO
 
+        String query = """
+                SELECT * FROM cliente WHERE id = :id;
+                """;
+
+        Optional<Cliente> optCliente = jdbcClient.sql(query)
+                .param("id", idToFind)
+                .query(Cliente.class)
+                .optional();
+
+        assertTrue(optCliente != null);
     }
 
     //A realizar por el alumno...
     @Test
     void findByNombre() {
-        String nombre = "";
-        //TODO
+        String nombre = "Marcos";
+
+        String query = """
+                SELECT * FROM cliente WHERE nombre = :nombre;
+                """;
+        Optional<Cliente> optCliente = jdbcClient.sql(query)
+                .param("nombre", nombre)
+                .query(Cliente.class)
+                .optional();
+
+        assertTrue(optCliente != null);
     }
 
     @Test
     void findByNombreButNotFound() {
-        String nombre = "";
-        //TODO
+        String nombre = "Buenos días";
+
+        String query = """
+                SELECT * FROM cliente WHERE nombre = :nombre;
+                """;
+        Optional<Cliente> optCliente = jdbcClient.sql(query)
+                .param("nombre", nombre)
+                .query(Cliente.class)
+                .optional();
+
+        assertTrue(optCliente == null);
     }
 
     @Test

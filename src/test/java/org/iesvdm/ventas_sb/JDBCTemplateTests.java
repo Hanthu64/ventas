@@ -1,6 +1,8 @@
 package org.iesvdm.ventas_sb;
 
+import com.mysql.cj.xdevapi.Client;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
 import org.iesvdm.ventas_sb.modelo.Cliente;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.MethodOrderer;
@@ -297,46 +299,114 @@ END;
 	//A realizar por el alumno...
 	@Test
 	void findByNombre() {
-		String nombre = "";
-		//TODO
+		String nombre = "Daniel";
+		Optional<Cliente> optCli = jdbcTemplate.query("""
+    			SELECT * FROM cliente WHERE nombre = ?
+				""", rs -> {
+			if(rs.next()){
+				return Optional.of(UtilDAO.buildCliente(rs));
+			}else{
+				return Optional.empty();
+			}
+		}, nombre);
+
+		assertTrue(optCli.isPresent());
+		assertEquals(nombre, optCli.get().getNombre());
 	}
 
 	@Test
 	void findByNombreButNotFound() {
-		String nombre = "";
-		//TODO
+		String nombre = "Manuel";
+		Optional<Cliente> optCli = jdbcTemplate.query("""
+    			SELECT * FROM cliente WHERE nombre = ?
+				""", rs -> {
+			if(rs.next()){
+				return Optional.of(UtilDAO.buildCliente(rs));
+			}else{
+				return Optional.empty();
+			}
+		}, nombre);
+
+		assertTrue(!optCli.isPresent());
 	}
 
 	@Test
 	void findClienteByCaracteristicaBetween() {
-		int característicaInit = 0;
-		int característicaFin = 0;
+		int característicaInit = 100;
+		int característicaFin = 200;
+		List<Cliente> listCli = jdbcTemplate.query("""
+    			SELECT * FROM cliente WHERE categoría BETWEEN ? AND ?
+				""", (rs, rowNum) -> BeanPropertyRowMapper
+				.newInstance(Cliente.class)
+				.mapRow(rs, rowNum)
+				, característicaInit, característicaFin);
+
+		System.out.println(listCli);
+
 		//TODO
 	}
 
+	@Test
 	void findClienteByNombreContainingAndApellido1Containing() {
-		String nombreContaining = "";
-		String apellido1Containing = "";
-		//TODO
+		String nombreContaining = "de";
+		String apellido1Containing = "la";
 
+		List<Cliente> listCli = jdbcTemplate.query("""
+    			SELECT * FROM cliente WHERE nombre like concat(concat('%', ?),'%') and apellido1 like concat(concat('%', ?),'%')
+				""", (rs, rowNum) -> BeanPropertyRowMapper
+						.newInstance(Cliente.class)
+						.mapRow(rs, rowNum)
+		, nombreContaining, apellido1Containing);
 
+		assertTrue(listCli.size() > 0);
 	}
 
+	@Test
 	void findClienteByNombreContainingAndApellido1ContainingButNotFound() {
-		String nombreContaining = "";
-		String apellido1Containing = "";
-		//TODO
+		String nombreContaining = "buenos";
+		String apellido1Containing = "dias";
 
+	    List<Cliente> listCli = jdbcTemplate.query("""
+    			SELECT * FROM cliente 
+    			WHERE nombre LIKE concat(concat('%', ?), '%')
+    			AND apellido1 LIKE concat(concat('%', ?),'%')
+				""", (rs, rowNum) -> BeanPropertyRowMapper
+						.newInstance(Cliente.class)
+						.mapRow(rs, rowNum)
+				, nombreContaining, apellido1Containing);
 
+		assertTrue(listCli.size() == 0);
 	}
 
+	@Test
 	void findPedidosWithClienteAndComercialByCliente_id() {
-		int clienteId = 0;
-		//TODO
+		int clienteId = 1;
+
+		List<Cliente> listCli = jdbcTemplate.query("""
+    			SELECT p.*, c.nombre, co.nombre FROM pedido AS p
+    			LEFT JOIN cliente AS c ON p.id_cliente = c.id
+    			LEFT JOIN comercial AS co ON p.id_comercial = co.id
+    			WHERE id_cliente = ?
+				""", (rs, rowNum) -> BeanPropertyRowMapper
+						.newInstance(Cliente.class)
+						.mapRow(rs, rowNum)
+				, clienteId);
+
+		assertTrue(listCli.size() > 0);
 	}
 
+	@Test
 	void insertNewClienteAndPedido() {
-		//
+		String sqlCliente = """
+    			INSERT INTO cliente VALUES(11, 'Carlos', 'Sánchez', 'Gonzalez', 'Almería', 300);
+				""";
+		String sqlPedido = """
+    			INSERT INTO pedido VALUES(17, 2400.01, '2019-03-12', 2, 5);
+				""";
+
+		int rowsAffected = jdbcTemplate.update(sqlCliente);
+		rowsAffected += jdbcTemplate.update(sqlPedido);
+		assertEquals(2, rowsAffected);
 	}
 
 }
